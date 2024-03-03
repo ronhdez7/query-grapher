@@ -1,3 +1,4 @@
+import { Schema } from "../example/generated/output";
 import { GQLBuilder } from "../types";
 
 export class Fragment<T> {
@@ -15,3 +16,8 @@ export function fragment<T>(): <Q extends GQLBuilder<T>>(
     return new Fragment(query);
   };
 }
+
+fragment<Schema["Query"]>()({
+  A: true,
+  a: 1,
+});

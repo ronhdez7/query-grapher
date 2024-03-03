@@ -104,11 +104,11 @@ export type GQLBuilder<S> = isAny<S> extends true
                 ? S extends Array<any>
                   ? S extends FieldWithArguments
                     ? ArgumentsOrNot<S[0]> & {
-                        data: Fragmentable<GQLBuilder<S[1]>>;
+                        data: GQLBuilder<S[1]>;
                       }
                     : GQLBuilder<S[number]>
                   : {
-                      [K in keyof S]: Fragmentable<GQLBuilder<S[K]>>;
+                      [K in keyof S]: GQLBuilder<S[K]>;
                     }
                 : boolean
             >
@@ -198,7 +198,7 @@ type GetNestedValue<Q, P extends string> = GetFirst<P> extends keyof Q
  * @param S Schema to be used
  * @param P Path of type string like 'A.B.C.D'
  */
-type GetNestedValueInModel<S, P extends string> = S extends Array<any>
+export type GetNestedValueInModel<S, P extends string> = S extends Array<any>
   ? S extends FieldWithArguments
     ? GetFirst<P> extends "args"
       ? GetNestedValueInModel<S[0], GetRest<P>>
