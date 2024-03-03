@@ -1,5 +1,4 @@
-import { Schema } from "../example/generated/output";
-import { Fragment } from "../lib/fragment";
+import { Fragment, fragment } from "../lib/fragment";
 import { Variable } from "../lib/var";
 
 /*
@@ -88,36 +87,34 @@ type HandleArguments<Args extends Arguments> = Args extends Array<any>
         | Variable;
     };
 
-/**
- * Constructs query object
- * @param T Schema (or field from it) to be used to build the query
- */
-export type GQLBuilder<S> = Partial<
-  XOR<
-    | (isAny<S> extends true
-        ? boolean
-        : S extends object
-        ? S extends Array<any>
-          ? S extends FieldWithArguments
-            ? ArgumentsOrNot<S[0]> & {
-                data: GQLBuilder<S[1]>;
-              }
-            : GQLBuilder<S[number]>
-          : {
-              [K in keyof S]: GQLBuilder<S[K]>;
-            }
-        : boolean)
-    | boolean
-  >
->;
+/** Allows type to be inside of fragment */
+type Fragmentable<T> = T | Fragment<T>;
 
 /**
- * Wrapper for Builder type. Makes fields nullable and handles unions
- * @param T Schema (or field from it) to be used to build the query
+ * Constructs query object
+ * @param S Schema (or field from it) to be used to build the query
  */
-// export type GQLBuilder<T> = T extends FieldWithArguments
-//   ? Builder<T>
-//   : Partial<XOR<Builder<T>>>;
+export type GQLBuilder<S> = isAny<S> extends true
+  ? boolean
+  :
+      | Fragmentable<
+          Partial<
+            XOR<
+              S extends object
+                ? S extends Array<any>
+                  ? S extends FieldWithArguments
+                    ? ArgumentsOrNot<S[0]> & {
+                        data: Fragmentable<GQLBuilder<S[1]>>;
+                      }
+                    : GQLBuilder<S[number]>
+                  : {
+                      [K in keyof S]: Fragmentable<GQLBuilder<S[K]>>;
+                    }
+                : boolean
+            >
+          >
+        >
+      | boolean;
 
 /*
  * Extract Type from query
@@ -132,7 +129,13 @@ type FlatField<F> = F extends object
     ? F extends FieldWithArguments
       ? FlatField<F[1]>
       : Array<FlatField<F[number]>>
-    : { [K in keyof F]: FlatField<F[K]> }
+    : {
+        [K in keyof F as F[K] extends FieldWithArguments
+          ? keyof PickNotNullable<F[K][0]> extends never
+            ? K
+            : never
+          : K]: FlatField<F[K]>;
+      }
   : F;
 
 /**
@@ -140,25 +143,31 @@ type FlatField<F> = F extends object
  * @param S Schema that contains all types
  * @param Q Query to extract type from
  */
-export type ExtractResponse<S, Q> = Q extends FalsyValue
-  ? undefined
-  : S extends object
-  ? S extends Array<any>
-    ? S extends FieldWithArguments
-      ? Q extends true
-        ? ExtractResponse<S[1], Q>
-        : "data" extends keyof Q
-        ? ExtractResponse<S[1], Q["data"]>
-        : any
-      : Array<ExtractResponse<S[number], Q>>
+export type ExtractResponse<S, Q> = XOR<
+  Q extends FalsyValue
+    ? undefined
     : Q extends true
     ? FlatField<S>
-    : {
-        [QK in keyof Q]: QK extends keyof S
-          ? ExtractResponse<S[QK], Q[QK]>
-          : any;
-      }
-  : S;
+    : Q extends Fragment<infer F>
+    ? ExtractResponse<S, F>
+    : S extends object
+    ? S extends Array<any>
+      ? S extends FieldWithArguments
+        ? "data" extends keyof Q
+          ? ExtractResponse<S[1], Q["data"]>
+          : any
+        : Array<ExtractResponse<S[number], Q>>
+      : {
+          [K in keyof Q as K extends keyof S
+            ? S[K] extends FieldWithArguments
+              ? keyof PickNotNullable<S[K][0]> extends never
+                ? K
+                : never
+              : K
+            : never]: K extends keyof S ? ExtractResponse<S[K], Q[K]> : never;
+        }
+    : S
+>;
 
 /*
  * Extract Variable Types
@@ -203,7 +212,9 @@ type GetNestedValueInModel<S, P extends string> = S extends Array<any>
  * Extract paths to all variables in query
  * @param Q Query to find variable in
  */
-type ExtractVariablesPaths<Q> = Q extends Record<string, any>
+type ExtractVariablesPaths<Q> = Q extends Fragment<infer F>
+  ? ExtractVariablesPaths<F>
+  : Q extends Record<string, any>
   ? {
       [K in keyof Q as NonNullable<Q[K]> extends Variable
         ? K
