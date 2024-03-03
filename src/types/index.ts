@@ -1,4 +1,4 @@
-import { Fragment, fragment } from "../lib/fragment";
+import { Fragment } from "../lib/fragment";
 import { Variable } from "../lib/var";
 
 /*

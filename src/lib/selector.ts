@@ -1,33 +1,5 @@
 import { Fragment } from "./fragment";
 
-/*
- * Leave here for reference
- */
-
-// export function select<T>(): <
-//   S extends Exclude<T, boolean | Fragment<any>>,
-//   Q extends {
-//     [K in keyof Q]: K extends keyof S ? S[K] : never;
-//   }
-// >(
-//   query: Q & T
-// ) => Q {
-//   return (query) => query;
-// }
-
-// select<GQLBuilder<Schema["Query"]>>()({
-//   Activity: {
-//     args: {},
-//     data: {
-//       message: true,
-//     },
-//   },
-// })
-
-/*
- * Implementation
- */
-
 /**
  * Creates a selector whose result can be reused without creating a fragment
  *
@@ -39,9 +11,10 @@ import { Fragment } from "./fragment";
  * @returns Function that takes a typed query and returns the same
  */
 export function select<T>(): <
-  S extends Exclude<T, boolean | Fragment<any>>,
   Q extends {
-    [K in keyof Q]: K extends keyof S ? Q[K] : never;
+    [K in keyof Q]: K extends keyof Exclude<T, boolean | Fragment<any>>
+      ? Q[K]
+      : never;
   }
 >(
   query: Q & T
