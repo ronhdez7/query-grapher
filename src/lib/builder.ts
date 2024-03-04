@@ -1,4 +1,5 @@
 import { GQLBuilder, QueryType, SchemaType, StrictQuery } from "../types";
+import { Parser } from "./parser";
 
 // json string
 // json
@@ -6,7 +7,11 @@ import { GQLBuilder, QueryType, SchemaType, StrictQuery } from "../types";
 // document node
 
 export class QueryBuilder<Q, M> {
-  constructor(private readonly schema: SchemaType) {}
+  private readonly parser: Parser;
+
+  constructor(private readonly schema: SchemaType) {
+    this.parser = new Parser(this.schema);
+  }
 
   getSchema(): SchemaType {
     return this.schema;
@@ -22,6 +27,10 @@ export class QueryBuilder<Q, M> {
     mutation: T
   ): BuiltQuery<T> {
     return new BuiltQuery("mutation", mutation);
+  }
+
+  parse(query: any) {
+    return this.parser.parseToQueryString(query);
   }
 }
 

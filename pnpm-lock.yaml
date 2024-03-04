@@ -9,8 +9,8 @@ devDependencies:
     specifier: ^20.11.22
     version: 20.11.22
   gql-types-gen:
-    specifier: ^0.4.2
-    version: 0.4.2
+    specifier: ^0.4.3
+    version: 0.4.3
   typescript:
     specifier: ^5.3.3
     version: 5.3.3
@@ -73,8 +73,8 @@ packages:
       mime-types: 2.1.35
     dev: true
 
-  /gql-types-gen@0.4.2:
-    resolution: {integrity: sha512-j7/Tr0SgODDwf8YSLotDbiwwDnNx9Qh6a8ArUOWzCr091mUqlculzzSAhi2mhxUb7EV4EKvZy5HqhguAwv5Hug==}
+  /gql-types-gen@0.4.3:
+    resolution: {integrity: sha512-VquueFwgwaCxtTy6TgnH4Uj6ez682KeKXKqKkGvkvZelnleQisAwnGWyO1WoZ0nQHIxY6AO+LsMHD6QGF2Smvw==}
     hasBin: true
     dependencies:
       axios: 1.6.7

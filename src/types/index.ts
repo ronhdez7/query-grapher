@@ -53,20 +53,22 @@ export type SchemaType = {
   [key: string]: string | readonly string[] | { [k: string]: FieldNameValue };
 };
 
+/** Type of data for an object's fields */
+export type FieldNameValue =
+  | string
+  | readonly [string]
+  // | readonly [string, string, ...string[]]
+  | readonly [Arguments, DataValue];
+
+/** Type of data for a field with arguments */
+export type DataValue = FieldNameValue | readonly DataValue[];
+
 /*
  * Building the queries
  */
 
 /** Type for a field's arguments */
-type Arguments = Record<string, any>;
-
-/** Type of data for an object's fields */
-type FieldNameValue =
-  | string
-  | readonly [string]
-  | readonly [string, string, ...string[]]
-  | readonly [Arguments, FieldNameValue]
-  | readonly FieldNameValue[];
+export type Arguments = Record<string, any>;
 
 /** Represents field with arguments */
 type FieldWithArguments = [Arguments, any];
