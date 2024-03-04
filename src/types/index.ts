@@ -41,11 +41,16 @@ type PickNotNullable<T> = {
   [P in keyof T as null extends T[P] ? never : P]: T[P];
 };
 
+/** Doesn't allow extra fields in queries */
+export type StrictQuery<T, Q> = {
+  [K in keyof T]: K extends keyof Exclude<Q, boolean | Fragment<any>>
+    ? T[K]
+    : never;
+} & Q;
+
 // objects
-type SchemaType = {
-  [key: string]:
-    | string
-    | { [k: string]: FieldNameValue | readonly [Arguments, FieldNameValue] };
+export type SchemaType = {
+  [key: string]: string | readonly string[] | { [k: string]: FieldNameValue };
 };
 
 /*
@@ -59,7 +64,9 @@ type Arguments = Record<string, any>;
 type FieldNameValue =
   | string
   | readonly [string]
-  | readonly [string, string, ...string[]];
+  | readonly [string, string, ...string[]]
+  | readonly [Arguments, FieldNameValue]
+  | readonly FieldNameValue[];
 
 /** Represents field with arguments */
 type FieldWithArguments = [Arguments, any];
@@ -198,7 +205,7 @@ type GetNestedValue<Q, P extends string> = GetFirst<P> extends keyof Q
  * @param S Schema to be used
  * @param P Path of type string like 'A.B.C.D'
  */
-export type GetNestedValueInModel<S, P extends string> = S extends Array<any>
+type GetNestedValueInModel<S, P extends string> = S extends Array<any>
   ? S extends FieldWithArguments
     ? GetFirst<P> extends "args"
       ? GetNestedValueInModel<S[0], GetRest<P>>
@@ -250,3 +257,9 @@ export type ExtractVariables<
         : any;
     }
   : {};
+
+/*
+ * Lib
+ */
+
+export type QueryType = "query" | "mutation" | "subscription";

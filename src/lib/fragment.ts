@@ -1,3 +1,5 @@
+import { StrictQuery } from "../types";
+
 /**
  * Creates a fragment
  *
@@ -27,14 +29,8 @@ export class Fragment<T> {
  * @generic T = Schema-like object to type fragment. Always required
  * @returns Function that takes a typed fragment
  */
-export function fragment<T>(): <
-  Q extends {
-    [K in keyof Q]: K extends keyof Exclude<T, boolean | Fragment<any>>
-      ? Q[K]
-      : never;
-  }
->(
-  query: Q & T
+export function fragment<T>(): <Q extends StrictQuery<Q, T>>(
+  query: Q
 ) => Fragment<Q> {
   return (query) => new Fragment(query);
 }

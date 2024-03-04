@@ -1,4 +1,4 @@
-import { Fragment } from "./fragment";
+import { StrictQuery } from "../types";
 
 /**
  * Creates a selector whose result can be reused without creating a fragment
@@ -10,14 +10,6 @@ import { Fragment } from "./fragment";
  * @generic T = Schema-like object to type query
  * @returns Function that takes a typed query and returns the same
  */
-export function select<T>(): <
-  Q extends {
-    [K in keyof Q]: K extends keyof Exclude<T, boolean | Fragment<any>>
-      ? Q[K]
-      : never;
-  }
->(
-  query: Q & T
-) => Q {
+export function select<T>(): <Q extends StrictQuery<Q, T>>(query: Q) => Q {
   return (query) => query;
 }
