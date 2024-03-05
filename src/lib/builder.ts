@@ -29,8 +29,16 @@ export class QueryBuilder<Q, M> {
     return new BuiltQuery("mutation", mutation);
   }
 
-  parse(query: any) {
+  parseToQueryString(query: any) {
     return this.parser.parseToQueryString(query);
+  }
+
+  parseToJSON(query: any) {
+    return this.parser.parseToJSON(query);
+  }
+
+  parseToJsonString(query: any) {
+    return this.parser.parseToJsonString(query);
   }
 }
 

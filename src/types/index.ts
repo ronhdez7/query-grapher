@@ -105,25 +105,25 @@ type Fragmentable<T> = T | Fragment<T>;
  */
 export type GQLBuilder<S> = isAny<S> extends true
   ? boolean
-  :
-      | Fragmentable<
-          Partial<
-            XOR<
-              S extends object
-                ? S extends Array<any>
-                  ? S extends FieldWithArguments
-                    ? ArgumentsOrNot<S[0]> & {
-                        data: GQLBuilder<S[1]>;
-                      }
-                    : GQLBuilder<S[number]>
-                  : {
-                      [K in keyof S]: GQLBuilder<S[K]>;
-                    }
-                : boolean
+  : XOR<
+      S extends object
+        ? S extends Array<any>
+          ? S extends FieldWithArguments
+            ?
+                | (ArgumentsOrNot<S[0]> & {
+                    data: GQLBuilder<S[1]>;
+                  })
+                | (keyof PickNotNullable<S[0]> extends never ? boolean : never)
+            : GQLBuilder<S[number]>
+          : Fragmentable<
+              Partial<
+                XOR<{
+                  [K in keyof S]: GQLBuilder<S[K]>;
+                }>
+              >
             >
-          >
-        >
-      | boolean;
+        : boolean
+    >;
 
 /*
  * Extract Type from query

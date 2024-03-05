@@ -4,6 +4,8 @@ import { Fragment } from "./fragment";
 import { Variable } from "./var";
 
 export class Parser {
+  private readonly variables: Record<string, any> = {};
+
   constructor(private readonly schema: SchemaType) {}
 
   private getQueryRoot(type: string) {
@@ -12,18 +14,45 @@ export class Parser {
     else return this.schema["Query"];
   }
 
-  parseToQueryString(anyQuery: BuiltQuery<any>) {
+  private getParseInfo(anyQuery: BuiltQuery<any>) {
     const query = anyQuery.getQuery();
-    if (typeof query === "string") return query;
-
     const type = anyQuery.getType();
 
     const root = this.getQueryRoot(type);
     if (root === undefined) throw new Error("Query root was not found");
 
+    return { query, type, root };
+  }
+
+  parseToQueryString(anyQuery: BuiltQuery<any>) {
+    const { query, root, type } = this.getParseInfo(anyQuery);
+    if (typeof query === "string") return query;
+
     const body = this.parseBody(query, root);
 
-    return body;
+    let args = "";
+    if (Object.keys(this.variables).length > 0) {
+      args = "(";
+      for (const varName in this.variables) {
+        args += `${varName}: $${varName},`;
+        this.variables[varName] = undefined
+      }
+      args = args.slice(0, -1) + ")";
+    }
+
+    return type + (args ? ` ${args} ` : " ") + body;
+  }
+
+  parseToJSON(anyQuery: BuiltQuery<any>) {
+    const body = this.parseToQueryString(anyQuery);
+
+    return { query: body };
+  }
+
+  parseToJsonString(anyQuery: BuiltQuery<any>) {
+    const body = this.parseToJSON(anyQuery);
+
+    return JSON.stringify(body);
   }
 
   private parseBody(
@@ -84,6 +113,7 @@ export class Parser {
             if (argValue instanceof Variable) {
               const varName = argValue.getName() ?? argKey;
               argsSection += `$${varName},`;
+              this.variables[varName] = argValue;
             } else {
               argsSection += String(argValue) + ",";
             }
@@ -121,7 +151,7 @@ export class Parser {
 
           const body = this.parseBody(true, value);
           if (body === null) continue;
-          output += "" + key + " " + body + "\n";
+          output += key + " " + body + "\n";
         }
 
         return output + "}";
@@ -145,7 +175,7 @@ export class Parser {
 
           const body = this.parseBody(query[key], newRoot);
           if (body === null) continue;
-          output += "" + key + " " + body + "\n";
+          output += key + " " + body + "\n";
         }
 
         return output + "}";
