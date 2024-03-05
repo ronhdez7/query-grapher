@@ -57,25 +57,32 @@ export class Parser {
 
   private parseBody(
     query: any,
-    root: SchemaType[string] | DataValue
+    root: SchemaType[string] | DataValue,
+    skip: string[] = []
   ): string | null {
+    const visited = [...skip];
+
     // make sure query is valid
     if (!query) return null;
     else if (typeof query === "string") return query;
 
     // Reference
     if (typeof root === "string") {
-      const rootValue = this.schema[getName(root)];
+      const name = getName(root);
+      if (visited.includes(name)) return null;
+      else visited.push(name);
+
+      const rootValue = this.schema[name];
       if (rootValue === undefined) return null;
       else if (rootValue === "" || rootValue === "ENUM") return "";
-      else return this.parseBody(query, rootValue);
+      else return this.parseBody(query, rootValue, visited);
     }
 
     // Union | List | FieldWithArgs
     else if (root instanceof Array) {
       // List
       if (root.length === 1) {
-        return this.parseBody(query, root[0]);
+        return this.parseBody(query, root[0], visited);
       }
 
       // FieldWithArgs
@@ -95,7 +102,7 @@ export class Parser {
             )
               return null;
           }
-          return this.parseBody(true, rootData);
+          return this.parseBody(true, rootData, visited);
         }
 
         const { args, data } = query;
@@ -121,7 +128,7 @@ export class Parser {
           if (argsSection !== "") output += `(${argsSection.slice(0, -1)}) `;
         }
 
-        const body = this.parseBody(query["data"], rootData);
+        const body = this.parseBody(query["data"], rootData, visited);
         if (body === null) return null;
 
         output += body;
@@ -133,7 +140,7 @@ export class Parser {
         let body = null;
         while (i < root.length && body === null) {
           const member = root[i];
-          if (member) body = this.parseBody(query, member);
+          if (member) body = this.parseBody(query, member, visited);
           i++;
         }
         return body;
@@ -145,7 +152,7 @@ export class Parser {
     else {
       // check if query is a fragment
       if (query instanceof Fragment) {
-        return this.parseBody(query.getFragment(), root);
+        return this.parseBody(query.getFragment(), root, visited);
       }
 
       // check if all subfields should be parsed
@@ -156,7 +163,7 @@ export class Parser {
           const value = root[key];
           if (!value) continue;
 
-          const body = this.parseBody(true, value);
+          const body = this.parseBody(true, value, visited);
           if (body === null) continue;
           output += key + " " + body + "\n";
         }
@@ -182,7 +189,7 @@ export class Parser {
           const newRoot = root[key];
           if (!query[key] || !newRoot) continue;
 
-          const body = this.parseBody(query[key], newRoot);
+          const body = this.parseBody(query[key], newRoot, visited);
           if (body === null) continue;
           output += key + " " + body + "\n";
         }
