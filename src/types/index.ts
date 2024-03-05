@@ -43,7 +43,7 @@ type PickNotNullable<T> = {
 
 /** Doesn't allow extra fields in queries */
 export type StrictQuery<T, Q> = {
-  [K in keyof T]: K extends keyof Exclude<Q, boolean | Fragment<any>>
+  [K in keyof T]: K extends keyof Exclude<Q, boolean | Fragment<any, any>>
     ? T[K]
     : never;
 } & Q;
@@ -97,7 +97,7 @@ type HandleArguments<Args extends Arguments> = Args extends Array<any>
     };
 
 /** Allows type to be inside of fragment */
-type Fragmentable<T> = T | Fragment<T>;
+type Fragmentable<T> = T | Fragment<any, T>;
 
 /**
  * Constructs query object
@@ -118,7 +118,7 @@ export type GQLBuilder<S> = isAny<S> extends true
           : Fragmentable<
               Partial<
                 XOR<{
-                  [K in keyof S]: GQLBuilder<S[K]>;
+                  [K in keyof S]: GQLBuilder<S[K]> | boolean;
                 }>
               >
             >
@@ -157,7 +157,7 @@ export type ExtractResponse<S, Q> = XOR<
     ? undefined
     : Q extends true
     ? FlatField<S>
-    : Q extends Fragment<infer F>
+    : Q extends Fragment<any, infer F>
     ? ExtractResponse<S, F>
     : S extends object
     ? S extends Array<any>
@@ -221,7 +221,7 @@ type GetNestedValueInModel<S, P extends string> = S extends Array<any>
  * Extract paths to all variables in query
  * @param Q Query to find variable in
  */
-type ExtractVariablesPaths<Q> = Q extends Fragment<infer F>
+type ExtractVariablesPaths<Q> = Q extends Fragment<any, infer F>
   ? ExtractVariablesPaths<F>
   : Q extends Record<string, any>
   ? {

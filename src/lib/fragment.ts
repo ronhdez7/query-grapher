@@ -1,4 +1,4 @@
-import { StrictQuery } from "../types";
+import { GQLBuilder, StrictQuery } from "../types";
 
 /**
  * Creates a fragment
@@ -8,8 +8,12 @@ import { StrictQuery } from "../types";
  *
  * To use outside of query, use the function 'fragment'.
  */
-export class Fragment<T> {
-  constructor(private readonly fragment: T) {}
+export class Fragment<T, Q> {
+  constructor(private readonly type: T, private readonly fragment: Q) {}
+
+  getType() {
+    return this.type;
+  }
 
   getFragment() {
     return this.fragment;
@@ -23,14 +27,18 @@ export class Fragment<T> {
  *
  * ```
  * const fragment: Fragment<typeof fragment> =
- *    fragment<GQLBuilder<Schema["Query"]["Field"]>>()({ ...fragment });
+ *    fragment<Schema>()("Query", { ...fragment });
  * ```
  *
  * @generic T = Schema-like object to type fragment. Always required
  * @returns Function that takes a typed fragment
  */
-export function fragment<T>(): <Q extends StrictQuery<Q, T>>(
+export function fragment<S>(): <
+  T extends keyof S,
+  Q extends StrictQuery<Q, GQLBuilder<S[T]>>
+>(
+  type: T,
   query: Q
-) => Fragment<Q> {
-  return (query) => new Fragment(query);
+) => Fragment<T, Q> {
+  return (type, query) => new Fragment(type, query);
 }
