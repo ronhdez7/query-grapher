@@ -1,4 +1,4 @@
-import { Arguments, DataValue, FieldNameValue, SchemaType } from "../types";
+import { Arguments, DataValue, SchemaType } from "../types";
 import { BuiltQuery } from "./builder";
 import { Fragment } from "./fragment";
 import { Variable } from "./var";
@@ -35,7 +35,7 @@ export class Parser {
       args = "(";
       for (const varName in this.variables) {
         args += `${varName}: $${varName},`;
-        this.variables[varName] = undefined
+        this.variables[varName] = undefined;
       }
       args = args.slice(0, -1) + ")";
     }
@@ -67,7 +67,7 @@ export class Parser {
     if (typeof root === "string") {
       const rootValue = this.schema[getName(root)];
       if (rootValue === undefined) return null;
-      else if (rootValue === "") return "";
+      else if (rootValue === "" || rootValue === "ENUM") return "";
       else return this.parseBody(query, rootValue);
     }
 
@@ -129,7 +129,14 @@ export class Parser {
       }
       // Union
       else {
-        return null;
+        let i = 0;
+        let body = null;
+        while (i < root.length && body === null) {
+          const member = root[i];
+          if (member) body = this.parseBody(query, member);
+          i++;
+        }
+        return body;
       }
       return null;
     }
@@ -154,6 +161,8 @@ export class Parser {
           output += key + " " + body + "\n";
         }
 
+        if (output === "{\n") return null;
+
         return output + "}";
       }
 
@@ -177,6 +186,8 @@ export class Parser {
           if (body === null) continue;
           output += key + " " + body + "\n";
         }
+
+        if (output === "{\n") return null;
 
         return output + "}";
       }

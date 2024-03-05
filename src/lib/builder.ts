@@ -6,7 +6,7 @@ import { Parser } from "./parser";
 // query string
 // document node
 
-export class QueryBuilder<Q, M> {
+export class QueryBuilder<Q = any, M = any, S = any> {
   private readonly parser: Parser;
 
   constructor(private readonly schema: SchemaType) {
@@ -27,6 +27,12 @@ export class QueryBuilder<Q, M> {
     mutation: T
   ): BuiltQuery<T> {
     return new BuiltQuery("mutation", mutation);
+  }
+
+  subscription<T extends StrictQuery<T, GQLBuilder<S>> | string>(
+    subscription: T
+  ): BuiltQuery<T> {
+    return new BuiltQuery("subscription", subscription);
   }
 
   parseToQueryString(query: any) {
