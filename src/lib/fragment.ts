@@ -9,7 +9,15 @@ import { GQLBuilder, StrictQuery } from "../types";
  * To use outside of query, use the function 'fragment'.
  */
 export class Fragment<T, Q> {
-  constructor(private readonly type: T, private readonly fragment: Q) {}
+  constructor(
+    private readonly name: string,
+    private readonly type: T,
+    private readonly fragment: Q
+  ) {}
+
+  getName() {
+    return this.name;
+  }
 
   getType() {
     return this.type;
@@ -37,8 +45,9 @@ export function fragment<S>(): <
   T extends keyof S,
   Q extends StrictQuery<Q, GQLBuilder<S[T]>>
 >(
+  name: string,
   type: T,
   query: Q
 ) => Fragment<T, Q> {
-  return (type, query) => new Fragment(type, query);
+  return (name, type, query) => new Fragment(name, type, query);
 }

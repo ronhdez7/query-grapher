@@ -5,6 +5,7 @@ import { Variable } from "./var";
 
 export class Parser {
   private readonly variables: Record<string, any> = {};
+  private readonly fragments: string[] = [];
 
   constructor(private readonly schema: SchemaType) {}
 
@@ -28,7 +29,7 @@ export class Parser {
     const { query, root, type } = this.getParseInfo(anyQuery);
     if (typeof query === "string") return query;
 
-    const body = this.parseBody(query, root);
+    const body = this.parseBody(query, root) ?? "{}";
 
     let args = "";
     if (Object.keys(this.variables).length > 0) {
@@ -40,7 +41,10 @@ export class Parser {
       args = args.slice(0, -1) + ")";
     }
 
-    return type + (args ? ` ${args} ` : " ") + body;
+    let fragments = this.fragments.join("\n");
+    this.fragments.splice(0, this.fragments.length);
+
+    return `${fragments}\n\n${type}${args ? ` ${args} ` : " "}${body}`;
   }
 
   parseToJSON(anyQuery: BuiltQuery<any>) {
@@ -152,7 +156,13 @@ export class Parser {
     else {
       // check if query is a fragment
       if (query instanceof Fragment) {
-        return this.parseBody(query.getFragment(), root, visited);
+        const fragmentName = query.getName();
+        const body = this.parseBody(query.getFragment(), root, visited);
+        if (body === null) return null;
+        const frag = `fragment ${fragmentName} on ${query.getType()} ${body}`;
+        this.fragments.push(frag);
+        // return this.parseBody(query.getFragment(), root, visited);
+        return `...${fragmentName}`;
       }
 
       // check if all subfields should be parsed
@@ -165,7 +175,8 @@ export class Parser {
 
           const body = this.parseBody(true, value, visited);
           if (body === null) continue;
-          output += key + " " + body + "\n";
+          if (body.startsWith("...")) output += `{\n${body}\n}\n`;
+          else output += key + " " + body + "\n";
         }
 
         if (output === "{\n") return null;
@@ -191,7 +202,8 @@ export class Parser {
 
           const body = this.parseBody(query[key], newRoot, visited);
           if (body === null) continue;
-          output += key + " " + body + "\n";
+          if (body.startsWith("...")) output += `${key} {\n${body}\n}\n`;
+          else output += key + " " + body + "\n";
         }
 
         if (output === "{\n") return null;
