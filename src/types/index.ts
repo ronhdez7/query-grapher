@@ -1,3 +1,5 @@
+import { Schema } from "../example/generated/output";
+import { frag } from "../example/gql";
 import { Fragment } from "../lib/fragment";
 import { Variable } from "../lib/var";
 
@@ -24,6 +26,17 @@ type XOR<T> = IsUnion<Extract<T, object>> extends true
   ? Exclude<T, object> | ExclusifyUnion<Extract<T, object>>
   : T;
 
+/** Merges types of union to object */
+type UnionToIntersection<U> = (
+  U extends any
+    ? (k: {
+        [K in keyof U]: NonNullable<U[K]> extends never ? {} : U[K];
+      }) => void
+    : never
+) extends (k: infer I) => void
+  ? I
+  : never;
+
 /*
  * Helpers
  */
@@ -47,6 +60,12 @@ export type StrictQuery<T, Q> = {
     ? T[K]
     : never;
 } & Q;
+
+/** Creates object with keys that extend U value */
+type HasValue<T, U> = { [K in keyof T as T[K] extends U ? K : never]: T[K] };
+
+/** Exclude symbol from union */
+type RemoveSymbol<T> = Exclude<T, symbol>;
 
 // objects
 export type SchemaType = {
@@ -132,18 +151,34 @@ export type GQLBuilder<S> = isAny<S> extends true
 /** Value to be skipped */
 type FalsyValue = false | undefined;
 
+/** Checks whether field should be skipped */
+type isFalsy<S, T> = T extends FalsyValue
+  ? true
+  : T extends Fragment<any, infer Q>
+  ? isFalsy<S, Q>
+  : NonNullable<S> extends FieldWithArguments
+  ? isFalsy<NonNullable<S>[1], "data" extends keyof T ? T["data"] : never>
+  : keyof HasValue<
+      {
+        [K in keyof T]: K extends keyof NonNullable<S>
+          ? isFalsy<NonNullable<S>[K], T[K]>
+          : false;
+      },
+      false
+    > extends never
+  ? true
+  : false;
+
 /** Eliminates arguments from fields recursively */
 type FlatField<F> = F extends object
   ? F extends Array<any>
     ? F extends FieldWithArguments
-      ? FlatField<F[1]>
+      ? keyof PickNotNullable<F[0]> extends never
+        ? FlatField<F[1]>
+        : never
       : Array<FlatField<F[number]>>
     : {
-        [K in keyof F as F[K] extends FieldWithArguments
-          ? keyof PickNotNullable<F[K][0]> extends never
-            ? K
-            : never
-          : K]: FlatField<F[K]>;
+        [K in keyof F]: FlatField<F[K]>;
       }
   : F;
 
@@ -153,7 +188,7 @@ type FlatField<F> = F extends object
  * @param Q Query to extract type from
  */
 export type ExtractResponse<S, Q> = XOR<
-  Q extends FalsyValue
+  isFalsy<S, Q> extends true
     ? undefined
     : Q extends true
     ? FlatField<S>
@@ -167,13 +202,9 @@ export type ExtractResponse<S, Q> = XOR<
           : any
         : Array<ExtractResponse<S[number], Q>>
       : {
-          [K in keyof Q as K extends keyof S
-            ? S[K] extends FieldWithArguments
-              ? keyof PickNotNullable<S[K][0]> extends never
-                ? K
-                : never
-              : K
-            : never]: K extends keyof S ? ExtractResponse<S[K], Q[K]> : never;
+          [K in keyof Q as isFalsy<S, Q[K]> extends true
+            ? never
+            : K]: K extends keyof S ? ExtractResponse<S[K], Q[K]> : never;
         }
     : S
 >;
@@ -198,8 +229,10 @@ type GetRest<T extends string> = T extends `${infer _}.${infer B}` ? B : T;
  * @param Q Query to be used
  * @param P Path of type string like 'A.B.C.D'
  */
-type GetNestedValue<Q, P extends string> = GetFirst<P> extends keyof Q
-  ? GetNestedValue<Q[GetFirst<P>], P extends `${infer _}.${infer B}` ? B : P>
+type GetNestedValue<Q, P extends string> = Q extends Fragment<any, infer U>
+  ? GetNestedValue<U, P>
+  : GetFirst<P> extends keyof Q
+  ? GetNestedValue<Q[GetFirst<P>], GetRest<P>>
   : Q;
 
 /**
@@ -221,17 +254,27 @@ type GetNestedValueInModel<S, P extends string> = S extends Array<any>
  * Extract paths to all variables in query
  * @param Q Query to find variable in
  */
-type ExtractVariablesPaths<Q> = Q extends Fragment<any, infer F>
-  ? ExtractVariablesPaths<F>
+type ExtractVariablesPaths<S, Q> = Q extends Fragment<any, infer F>
+  ? ExtractVariablesPaths<S, F>
   : Q extends Record<string, any>
   ? {
       [K in keyof Q as NonNullable<Q[K]> extends Variable
         ? K
         : NonNullable<Q[K]> extends Record<string, any>
-        ? `${Exclude<K, symbol>}.${Exclude<
-            keyof ExtractVariablesPaths<NonNullable<Q[K]>>,
-            symbol
-          >}`
+        ? S extends FieldWithArguments
+          ? isFalsy<S[1], Q["data"]> extends true
+            ? never
+            : `${RemoveSymbol<K>}.${RemoveSymbol<
+                keyof ExtractVariablesPaths<
+                  S[K extends "args" ? 0 : 1],
+                  NonNullable<Q[K]>
+                >
+              >}`
+          : K extends keyof S
+          ? `${RemoveSymbol<K>}.${RemoveSymbol<
+              keyof ExtractVariablesPaths<S[K], NonNullable<Q[K]>>
+            >}`
+          : never
         : never]: K;
     }
   : {};
@@ -245,7 +288,7 @@ type ExtractVariablesPaths<Q> = Q extends Fragment<any, infer F>
 export type ExtractVariables<
   M,
   Q,
-  P = ExtractVariablesPaths<Q>
+  P = ExtractVariablesPaths<M, Q>
 > = P extends Record<string, any>
   ? {
       [K in keyof P as K extends string

@@ -114,6 +114,7 @@ export class Parser {
 
         let output = "";
 
+        let varsToSave: Record<string, any> = {};
         if (typeof args === "object") {
           let argsSection = "";
           for (const argKey in args) {
@@ -124,7 +125,7 @@ export class Parser {
             if (argValue instanceof Variable) {
               const varName = argValue.getName() ?? argKey;
               argsSection += `$${varName},`;
-              this.variables[varName] = argValue;
+              varsToSave[varName] = argValue;
             } else {
               argsSection += String(argValue) + ",";
             }
@@ -134,6 +135,8 @@ export class Parser {
 
         const body = this.parseBody(query["data"], rootData, visited);
         if (body === null) return null;
+
+        for (const vk in varsToSave) this.variables[vk] = varsToSave[vk];
 
         output += body;
         return output;
@@ -175,7 +178,7 @@ export class Parser {
 
           const body = this.parseBody(true, value, visited);
           if (body === null) continue;
-          if (body.startsWith("...")) output += `{\n${body}\n}\n`;
+          if (body.trim().startsWith("...")) output += `{\n${body}\n}\n`;
           else output += key + " " + body + "\n";
         }
 
@@ -202,7 +205,7 @@ export class Parser {
 
           const body = this.parseBody(query[key], newRoot, visited);
           if (body === null) continue;
-          if (body.startsWith("...")) output += `${key} {\n${body}\n}\n`;
+          if (body.trim().startsWith("...")) output += `${key} {\n${body}\n}\n`;
           else output += key + " " + body + "\n";
         }
 
