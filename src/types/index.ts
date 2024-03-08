@@ -1,5 +1,3 @@
-import { Schema } from "../example/generated/output";
-import { frag } from "../example/gql";
 import { Fragment } from "../lib/fragment";
 import { Variable } from "../lib/var";
 
@@ -64,9 +62,6 @@ export type StrictQuery<T, Q> = {
 /** Creates object with keys that extend U value */
 type HasValue<T, U> = { [K in keyof T as T[K] extends U ? K : never]: T[K] };
 
-/** Exclude symbol from union */
-type RemoveSymbol<T> = Exclude<T, symbol>;
-
 // objects
 export type SchemaType = {
   [key: string]: string | readonly string[] | { [k: string]: FieldNameValue };
@@ -108,11 +103,11 @@ type HandleArguments<Args extends Arguments> = Args extends Array<any>
         | (Exclude<Args[K], null> extends object
             ? HandleArguments<Exclude<Args[K], null>>
             : Exclude<Args[K], null>)
-        | Variable;
+        | Variable<Args[K]>;
     } & {
       [K in keyof PickNotNullable<Args>]:
         | (Args[K] extends object ? HandleArguments<Args[K]> : Args[K])
-        | Variable;
+        | Variable<Args[K]>;
     };
 
 /** Allows type to be inside of fragment */
@@ -213,98 +208,32 @@ export type ExtractResponse<S, Q> = XOR<
  * Extract Variable Types
  */
 
-/** Gets first word before dot (.) */
-type GetFirst<T extends string> = T extends `${infer A}.${infer _}` ? A : T;
-
-/** Gets last word after dot (.) */
-type GetLast<T extends string> = T extends `${infer _}.${infer B}`
-  ? GetLast<B>
-  : T;
-
-/** Gets rest of the string after first dot (.) */
-type GetRest<T extends string> = T extends `${infer _}.${infer B}` ? B : T;
-
 /**
- * Gets nested value in a query
- * @param Q Query to be used
- * @param P Path of type string like 'A.B.C.D'
- */
-type GetNestedValue<Q, P extends string> = Q extends Fragment<any, infer U>
-  ? GetNestedValue<U, P>
-  : GetFirst<P> extends keyof Q
-  ? GetNestedValue<Q[GetFirst<P>], GetRest<P>>
-  : Q;
-
-/**
- * Gets nested value in a schema
- * @param S Schema to be used
- * @param P Path of type string like 'A.B.C.D'
- */
-type GetNestedValueInModel<S, P extends string> = S extends Array<any>
-  ? S extends FieldWithArguments
-    ? GetFirst<P> extends "args"
-      ? GetNestedValueInModel<S[0], GetRest<P>>
-      : GetNestedValueInModel<S[1], GetRest<P>>
-    : GetNestedValueInModel<S[number], P>
-  : GetFirst<P> extends keyof S
-  ? GetNestedValueInModel<S[GetFirst<P>], GetRest<P>>
-  : S;
-
-/**
- * Extract paths to all variables in query
- * @param Q Query to find variable in
- */
-type ExtractVariablesPaths<S, Q> = Q extends Fragment<any, infer F>
-  ? ExtractVariablesPaths<S, F>
-  : Q extends Record<string, any>
-  ? {
-      [K in keyof Q as NonNullable<Q[K]> extends Variable
-        ? K
-        : NonNullable<Q[K]> extends Record<string, any>
-        ? S extends FieldWithArguments
-          ? isFalsy<S[1], Q["data"]> extends true
-            ? never
-            : `${RemoveSymbol<K>}.${RemoveSymbol<
-                keyof ExtractVariablesPaths<
-                  S[K extends "args" ? 0 : 1],
-                  NonNullable<Q[K]>
-                >
-              >}`
-          : K extends keyof S
-          ? `${RemoveSymbol<K>}.${RemoveSymbol<
-              keyof ExtractVariablesPaths<S[K], NonNullable<Q[K]>>
-            >}`
-          : never
-        : never]: K;
-    }
-  : {};
-
-/**
- * Extracts variables from a query
- * @param M Schema to get types from
+ * Extract variables from query
  * @param Q Query to extract variables from
- * @param P Paths to all variables, should not be passed in
  */
-export type ExtractVariables<
-  M,
-  Q,
-  P = ExtractVariablesPaths<M, Q>
-> = P extends Record<string, any>
-  ? {
-      [K in keyof P as K extends string
-        ? GetNestedValue<Q, K> extends Variable<infer N>
-          ? undefined extends N
-            ? GetLast<K>
-            : N
-          : GetLast<K>
-        : never]: K extends string
-        ? Exclude<GetNestedValueInModel<M, K>, object>
-        : any;
-    }
-  : {};
+export type ExtractVariables<S, Q, K = keyof Q> = UnionToIntersection<
+  Q extends Fragment<any, infer F>
+    ? ExtractVariables<NonNullable<S>, F>
+    : K extends keyof Q
+    ? Q[K] extends Variable<infer V, infer N>
+      ? { [K2 in K as undefined extends N ? K : NonNullable<N>]: V }
+      : NonNullable<S> extends FieldWithArguments
+      ? "data" extends keyof Q
+        ? isFalsy<NonNullable<S>[1], Q["data"]> extends false
+          ? ExtractVariables<NonNullable<S>[K extends "args" ? 0 : 1], Q[K]>
+          : never
+        : never
+      : K extends keyof NonNullable<S>
+      ? ExtractVariables<NonNullable<S>[K], Q[K]>
+      : never
+    : never
+>;
 
 /*
  * Lib
  */
 
 export type QueryType = "query" | "mutation" | "subscription";
+
+type A = UnionToIntersection<{ hello: boolean } | never>;
