@@ -1,4 +1,4 @@
-import { Arguments, DataValue, SchemaType } from "../types";
+import { Arguments, DataValue, JSONQuery, SchemaType } from "../types";
 import { BuiltQuery } from "./builder";
 import { Fragment } from "./fragment";
 import { Variable } from "./var";
@@ -47,14 +47,16 @@ export class Parser {
     return `${fragments}\n\n${type}${args ? ` ${args} ` : " "}${body}`;
   }
 
-  parseToJSON(anyQuery: BuiltQuery<any>) {
+  parseToJSON(anyQuery: BuiltQuery<any>, vars?: JSONQuery["variables"]) {
     const body = this.parseToQueryString(anyQuery);
+    const result: JSONQuery = { query: body };
+    if (vars) result["variables"] = vars;
 
-    return { query: body };
+    return result;
   }
 
-  parseToJsonString(anyQuery: BuiltQuery<any>) {
-    const body = this.parseToJSON(anyQuery);
+  parseToJsonString(anyQuery: BuiltQuery<any>, vars?: JSONQuery["variables"]) {
+    const body = this.parseToJSON(anyQuery, vars);
 
     return JSON.stringify(body);
   }

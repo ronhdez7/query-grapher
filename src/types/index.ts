@@ -1,3 +1,4 @@
+import { BuiltQuery } from "../lib/builder";
 import { Fragment } from "../lib/fragment";
 import { Variable } from "../lib/var";
 
@@ -149,6 +150,9 @@ export type GQLBuilder<S> = isAny<S> extends true
  * Extract Type from query
  */
 
+/**  */
+type GetQuery<Q> = Q extends BuiltQuery<infer BQ> ? BQ : Q;
+
 /** Value to be skipped */
 type FalsyValue = false | undefined;
 
@@ -190,7 +194,7 @@ type FlatField<F> = F extends object
  * @param S Schema that contains all types
  * @param Q Query to extract type from
  */
-export type ExtractResponse<S, Q> = XOR<
+export type ExtractResponse<S, Q2, Q = GetQuery<Q2>> = XOR<
   isFalsy<S, Q> extends true
     ? undefined
     : Q extends true
@@ -220,7 +224,12 @@ export type ExtractResponse<S, Q> = XOR<
  * Extract variables from query
  * @param Q Query to extract variables from
  */
-export type ExtractVariables<S, Q, K = keyof Q> = UnionToIntersection<
+export type ExtractVariables<
+  S,
+  Q2,
+  Q = GetQuery<Q2>,
+  K = keyof Q
+> = UnionToIntersection<
   Q extends Fragment<any, infer F>
     ? ExtractVariables<NonNullable<S>, F>
     : K extends keyof Q
@@ -243,3 +252,9 @@ export type ExtractVariables<S, Q, K = keyof Q> = UnionToIntersection<
  */
 
 export type QueryType = "query" | "mutation" | "subscription";
+
+export type JSONQuery<V extends Record<string, any> = Record<string, any>> = {
+  operationName?: string;
+  query: string;
+  variables?: V;
+};
