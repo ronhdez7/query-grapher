@@ -43,7 +43,7 @@ export class Fragment<T, Q> {
  */
 export function fragment<S>(): <
   T extends keyof S,
-  Q extends StrictQuery<Q, GQLBuilder<S[T]>>
+  Q extends T extends keyof S ? StrictQuery<Q, GQLBuilder<S[T]>> : never
 >(
   name: string,
   type: T,

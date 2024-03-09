@@ -147,7 +147,9 @@ export type GQLBuilder<S> = isAny<S> extends true
 type FalsyValue = false | undefined;
 
 /** Checks whether field should be skipped */
-type isFalsy<S, T> = T extends FalsyValue
+type isFalsy<S, T> = T extends true
+  ? false
+  : T extends FalsyValue
   ? true
   : T extends Fragment<any, infer Q>
   ? isFalsy<S, Q>
@@ -219,10 +221,10 @@ export type ExtractVariables<S, Q, K = keyof Q> = UnionToIntersection<
     ? Q[K] extends Variable<infer V, infer N>
       ? { [K2 in K as undefined extends N ? K : NonNullable<N>]: V }
       : NonNullable<S> extends FieldWithArguments
-      ? "data" extends keyof Q
-        ? isFalsy<NonNullable<S>[1], Q["data"]> extends false
-          ? ExtractVariables<NonNullable<S>[K extends "args" ? 0 : 1], Q[K]>
-          : never
+      ? isFalsy<NonNullable<S>, Q> extends false
+        ? UnionToIntersection<
+            ExtractVariables<NonNullable<S>[K extends "args" ? 0 : 1], Q[K]>
+          >
         : never
       : K extends keyof NonNullable<S>
       ? ExtractVariables<NonNullable<S>[K], Q[K]>
@@ -235,5 +237,3 @@ export type ExtractVariables<S, Q, K = keyof Q> = UnionToIntersection<
  */
 
 export type QueryType = "query" | "mutation" | "subscription";
-
-type A = UnionToIntersection<{ hello: boolean } | never>;

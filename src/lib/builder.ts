@@ -1,11 +1,6 @@
 import { GQLBuilder, QueryType, SchemaType, StrictQuery } from "../types";
 import { Parser } from "./parser";
 
-// json string
-// json
-// query string
-// document node
-
 export class QueryBuilder<Q = any, M = any, S = any> {
   private readonly parser: Parser;
 
