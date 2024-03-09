@@ -62,6 +62,12 @@ export type StrictQuery<T, Q> = {
 /** Creates object with keys that extend U value */
 type HasValue<T, U> = { [K in keyof T as T[K] extends U ? K : never]: T[K] };
 
+export type NonEmptyString<T extends string> = T extends `${infer R}`
+  ? R extends ""
+    ? never
+    : R
+  : never;
+
 // objects
 export type SchemaType = {
   [key: string]: string | readonly string[] | { [k: string]: FieldNameValue };

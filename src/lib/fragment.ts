@@ -1,4 +1,4 @@
-import { GQLBuilder, StrictQuery } from "../types";
+import { GQLBuilder, NonEmptyString, StrictQuery } from "../types";
 
 /**
  * Creates a fragment
@@ -42,10 +42,11 @@ export class Fragment<T, Q> {
  * @returns Function that takes a typed fragment
  */
 export function fragment<S>(): <
+  N extends string,
   T extends keyof S,
   Q extends T extends keyof S ? StrictQuery<Q, GQLBuilder<S[T]>> : never
 >(
-  name: string,
+  name: N & NonEmptyString<N>,
   type: T,
   query: Q
 ) => Fragment<T, Q> {
