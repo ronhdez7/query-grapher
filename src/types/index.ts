@@ -1,5 +1,9 @@
+import { Schema } from "../example/generated/output";
+import { gql } from "../example/gql";
 import { BuiltQuery } from "../lib/builder";
+import { Field } from "../lib/field";
 import { Fragment } from "../lib/fragment";
+import { select } from "../lib/selector";
 import { Variable } from "../lib/var";
 
 /*
@@ -63,11 +67,19 @@ export type StrictQuery<T, Q> = {
 /** Creates object with keys that extend U value */
 type HasValue<T, U> = { [K in keyof T as T[K] extends U ? K : never]: T[K] };
 
+/** Makes sure string has at least one character */
 export type NonEmptyString<T extends string> = T extends `${infer R}`
   ? R extends ""
     ? never
     : R
   : never;
+
+/** Merges  */
+type MergeFields<T extends unknown[]> = T extends [a: infer A, ...rest: infer R]
+  ? A extends Fragment<any, infer F>
+    ? F & MergeFields<R>
+    : A & MergeFields<R>
+  : {};
 
 // objects
 export type SchemaType = {
@@ -120,10 +132,36 @@ type HandleArguments<Args extends Arguments> = Args extends Array<any>
 /** Allows type to be inside of fragment */
 type Fragmentable<T> = T | Fragment<any, T>;
 
+type Arrayble<T> = T | Array<T>;
+
 /**
  * Constructs query object
  * @param S Schema (or field from it) to be used to build the query
  */
+// export type GQLBuilder<S> = isAny<S> extends true
+//   ? boolean
+//   : XOR<
+//       S extends object
+//         ? S extends Array<any>
+//           ? S extends FieldWithArguments
+//             ?
+//                 | (ArgumentsOrNot<S[0]> & {
+//                     // data: Arrayble<GQLBuilder<S[1]>>;
+//                     data: GQLBuilder<S[1]>;
+//                   })
+//                 | (keyof PickNotNullable<S[0]> extends never ? boolean : never)
+//             : GQLBuilder<S[number]>
+//           : Fragmentable<
+//               Partial<
+//                 XOR<{
+//                   // [K in keyof S]: Arrayble<GQLBuilder<S[K]>> | boolean;
+//                   [K in keyof S]: GQLBuilder<S[K]> | boolean;
+//                 }>
+//               >
+//             >
+//         : boolean
+//     >;
+
 export type GQLBuilder<S> = isAny<S> extends true
   ? boolean
   : XOR<
@@ -131,14 +169,13 @@ export type GQLBuilder<S> = isAny<S> extends true
         ? S extends Array<any>
           ? S extends FieldWithArguments
             ?
-                | (ArgumentsOrNot<S[0]> & {
-                    data: GQLBuilder<S[1]>;
-                  })
+                | Field<HandleArguments<S[0]>, GQLBuilder<S[1]>>
                 | (keyof PickNotNullable<S[0]> extends never ? boolean : never)
             : GQLBuilder<S[number]>
           : Fragmentable<
               Partial<
                 XOR<{
+                  // [K in keyof S]: Arrayble<GQLBuilder<S[K]>> | boolean;
                   [K in keyof S]: GQLBuilder<S[K]> | boolean;
                 }>
               >
@@ -150,26 +187,24 @@ export type GQLBuilder<S> = isAny<S> extends true
  * Extract Type from query
  */
 
-/**  */
+/** Gets query even if it is BuiltQuery */
 type GetQuery<Q> = Q extends BuiltQuery<infer BQ> ? BQ : Q;
 
 /** Value to be skipped */
 type FalsyValue = false | undefined;
 
 /** Checks whether field should be skipped */
-type isFalsy<S, T> = T extends true
+type isFalsy<T> = T extends true
   ? false
   : T extends FalsyValue
   ? true
   : T extends Fragment<any, infer Q>
-  ? isFalsy<S, Q>
-  : NonNullable<S> extends FieldWithArguments
-  ? isFalsy<NonNullable<S>[1], "data" extends keyof T ? T["data"] : never>
+  ? isFalsy<Q>
+  : T extends Field<any, infer Q>
+  ? isFalsy<Q>
   : keyof HasValue<
       {
-        [K in keyof T]: K extends keyof NonNullable<S>
-          ? isFalsy<NonNullable<S>[K], T[K]>
-          : false;
+        [K in keyof T]: K extends keyof T ? isFalsy<T[K]> : false;
       },
       false
     > extends never
@@ -195,13 +230,15 @@ type FlatField<F> = F extends object
  * @param Q Query to extract type from
  */
 export type ExtractResponse<S, Q2, Q = GetQuery<Q2>> = XOR<
-  isFalsy<S, Q> extends true
+  isFalsy<Q> extends true
     ? undefined
     : Q extends true
     ? FlatField<S>
     : Q extends Fragment<any, infer F>
     ? ExtractResponse<S, F>
-    : S extends object
+    : // : Q extends Array<infer V>
+    // ? ExtractResponse<S, Merge<S, V>>
+    S extends object
     ? S extends Array<any>
       ? S extends FieldWithArguments
         ? "data" extends keyof Q
@@ -209,7 +246,7 @@ export type ExtractResponse<S, Q2, Q = GetQuery<Q2>> = XOR<
           : any
         : Array<ExtractResponse<S[number], Q>>
       : {
-          [K in keyof Q as isFalsy<S, Q[K]> extends true
+          [K in keyof Q as isFalsy<Q[K]> extends true
             ? never
             : K]: K extends keyof S ? ExtractResponse<S[K], Q[K]> : never;
         }
@@ -224,28 +261,25 @@ export type ExtractResponse<S, Q2, Q = GetQuery<Q2>> = XOR<
  * Extract variables from query
  * @param Q Query to extract variables from
  */
-export type ExtractVariables<
-  S,
-  Q2,
-  Q = GetQuery<Q2>,
-  K = keyof Q
-> = UnionToIntersection<
-  Q extends Fragment<any, infer F>
-    ? ExtractVariables<NonNullable<S>, F>
-    : K extends keyof Q
-    ? Q[K] extends Variable<infer V, infer N>
-      ? { [K2 in K as undefined extends N ? K : NonNullable<N>]: V }
-      : NonNullable<S> extends FieldWithArguments
-      ? isFalsy<NonNullable<S>, Q> extends false
-        ? UnionToIntersection<
-            ExtractVariables<NonNullable<S>[K extends "args" ? 0 : 1], Q[K]>
-          >
-        : never
-      : K extends keyof NonNullable<S>
-      ? ExtractVariables<NonNullable<S>[K], Q[K]>
-      : never
-    : never
->;
+type ExtractVariables<Q, K = keyof Q> = Q extends Fragment<any, infer F>
+  ? ExtractVariables<F>
+  : Q extends Field<infer A, infer T>
+  ? isFalsy<T> extends true
+    ? never
+    : ExtractVariables<A> | ExtractVariables<T>
+  : K extends keyof Q
+  ? Q[K] extends Variable<infer V, infer N>
+    ? { [K2 in K as undefined extends N ? K : NonNullable<N>]: V }
+    : ExtractVariables<Q[K]>
+  : never;
+
+export type GetVariables<Q> = UnionToIntersection<
+  ExtractVariables<GetQuery<NonNullable<Q>>>
+> extends infer V
+  ? keyof V extends never
+    ? Arguments
+    : V
+  : Arguments;
 
 /*
  * Lib
@@ -258,3 +292,36 @@ export type JSONQuery<V extends Record<string, any> = Record<string, any>> = {
   query: string;
   variables?: V;
 };
+
+// const query = {
+//   Media: {
+//     data: [
+//       {
+//         id: true,
+//       },
+//       {
+//         averageScore: true,
+//       },
+//       {
+//         id: false,
+//       },
+//     ],
+//   },
+// } satisfies GQLBuilder<Schema["Query"]>;
+
+// const data: ExtractResponse<Schema["Query"], typeof query> = {
+//   Media: {
+//     averageScore: 1,
+//     id: 1,
+//   },
+// };
+
+type Merge<T> = IsUnion<T> extends false
+  ? T
+  : T extends Field<any, infer Q>
+  ? "data" extends keyof T
+    ? Merge<Q>
+    : never
+  : {
+      [K in keyof T as isFalsy<T[K]> extends true ? never : K]: T[K];
+    };
