@@ -1,4 +1,6 @@
-import { GQLBuilder, NonEmptyString, StrictQuery } from "../types";
+import { Schema } from "../example/generated/output";
+import { GQLBuilder, NonEmptyString } from "../types";
+import { args } from "./args";
 
 /**
  * Creates a fragment
@@ -44,7 +46,7 @@ export class Fragment<T, Q> {
 export function fragment<S>(): <
   N extends string,
   T extends keyof S,
-  Q extends T extends keyof S ? StrictQuery<Q, GQLBuilder<S[T]>> : never
+  Q extends T extends keyof S ? GQLBuilder<S[T]> : never
 >(
   name: N & NonEmptyString<N>,
   type: T,
@@ -52,3 +54,7 @@ export function fragment<S>(): <
 ) => Fragment<T, Q> {
   return (name, type, query) => new Fragment(name, type, query);
 }
+
+const frag = fragment<Schema>()("ActivityFragment", "ActivityUnion", {
+  message: [true],
+});

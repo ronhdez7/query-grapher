@@ -1,11 +1,10 @@
 import {
-  ExtractResponse,
-  ExtractVariables,
+  GetResponse,
+  GetVariables,
   GQLBuilder,
   JSONQuery,
   QueryType,
   SchemaType,
-  StrictQuery,
 } from "../types";
 import { Parser } from "./parser";
 
@@ -20,21 +19,21 @@ export class QueryBuilder<Q = any, M = any, S = any> {
     return this.schema;
   }
 
-  query<T extends StrictQuery<T, GQLBuilder<Q>> | string>(
+  query<T extends GQLBuilder<Q> | string>(
     query: T
-  ): BuiltQuery<T, ExtractResponse<Q, T>, ExtractVariables<Q, T>> {
+  ): BuiltQuery<T, GetResponse<Q, T>, GetVariables<T>> {
     return new BuiltQuery("query", query);
   }
 
-  mutation<T extends StrictQuery<T, GQLBuilder<M>> | string>(
+  mutation<T extends GQLBuilder<M> | string>(
     mutation: T
-  ): BuiltQuery<T, ExtractResponse<M, T>, ExtractVariables<M, T>> {
+  ): BuiltQuery<T, GetResponse<M, T>, GetVariables<T>> {
     return new BuiltQuery("mutation", mutation);
   }
 
-  subscription<T extends StrictQuery<T, GQLBuilder<S>> | string>(
+  subscription<T extends GQLBuilder<S> | string>(
     subscription: T
-  ): BuiltQuery<T, ExtractResponse<S, T>, ExtractVariables<S, T>> {
+  ): BuiltQuery<T, GetResponse<S, T>, GetVariables<T>> {
     return new BuiltQuery("subscription", subscription);
   }
 

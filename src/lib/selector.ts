@@ -1,4 +1,4 @@
-import { GQLBuilder, StrictQuery } from "../types";
+import { GQLBuilder } from "../types";
 
 /**
  * Creates a selector whose result can be reused without creating a fragment
@@ -12,7 +12,7 @@ import { GQLBuilder, StrictQuery } from "../types";
  */
 export function select<S>(): <
   T extends keyof S,
-  Q extends T extends keyof S ? StrictQuery<Q, GQLBuilder<S[T]>> : never
+  Q extends T extends keyof S ? GQLBuilder<S[T]> : never
 >(
   type: T,
   query: Q
