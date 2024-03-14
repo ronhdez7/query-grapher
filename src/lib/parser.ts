@@ -1,4 +1,5 @@
 import { Arguments, DataValue, JSONQuery, SchemaType } from "../types";
+import { Args } from "./args";
 import { BuiltQuery } from "./builder";
 import { Fragment } from "./fragment";
 import { Variable } from "./var";
@@ -31,14 +32,14 @@ export class Parser {
 
     const body = this.parseBody(query, root) ?? "{}";
 
-    let args = "";
+    let args;
+    const arglist: string[] = [];
     if (Object.keys(this.variables).length > 0) {
-      args = "(";
       for (const varName in this.variables) {
-        args += `${varName}: $${varName},`;
+        arglist.push(`${varName}: $${varName}`);
         this.variables[varName] = undefined;
       }
-      args = args.slice(0, -1) + ")";
+      args = `(${arglist.join(", ")})`;
     }
 
     let fragments = this.fragments.join("\n");
@@ -111,31 +112,47 @@ export class Parser {
           return this.parseBody(true, rootData, visited);
         }
 
-        const { args, data } = query;
+        let args: any;
+        let data: any;
+        if (Array.isArray(query)) {
+          if (query[0] instanceof Args) {
+            args = query[0]["args"];
+            data = query.slice(1);
+          } else {
+            args = undefined;
+            data = query.slice(0);
+          }
+        } else {
+          args = undefined;
+          data = query;
+        }
+
         if (!data) return null;
 
         let output = "";
 
         let varsToSave: Record<string, any> = {};
         if (typeof args === "object") {
-          let argsSection = "";
+          const arglist: string[] = [];
           for (const argKey in args) {
+            let argsSection = "";
             const argValue = args[argKey];
             if (argValue === undefined || argValue === null) continue;
 
             argsSection += argKey + ": ";
             if (argValue instanceof Variable) {
               const varName = argValue.getName() ?? argKey;
-              argsSection += `$${varName},`;
+              argsSection += `$${varName}`;
               varsToSave[varName] = argValue;
             } else {
-              argsSection += String(argValue) + ",";
+              argsSection += String(argValue);
             }
+            arglist.push(argsSection);
           }
-          if (argsSection !== "") output += `(${argsSection.slice(0, -1)}) `;
+          if (arglist.length > 0) output += `(${arglist.join(", ")}) `;
         }
 
-        const body = this.parseBody(query["data"], rootData, visited);
+        const body = this.parseBody(data, rootData, visited);
         if (body === null) return null;
 
         for (const vk in varsToSave) this.variables[vk] = varsToSave[vk];
@@ -189,12 +206,25 @@ export class Parser {
         return output + "}";
       }
 
+      // merge elements in array
+      else if (query instanceof Array) {
+        let output = "{\n";
+
+        const fragments = query.filter((e) => e instanceof Fragment);
+        const toMerge = query.filter((e) => !(e instanceof Fragment));
+
+        for (const fragment of fragments) {
+          output += this.parseBody(fragment, root, visited) + "\n";
+        }
+
+        const result = mergeArray(toMerge);
+        output += this.parseBody(result, root, visited)?.slice(2, -1) ?? "";
+        output += "}"
+        return output;
+      }
+
       // check if query has invalid type
-      else if (
-        typeof query !== "object" ||
-        query instanceof Array ||
-        Object.keys(query).length === 0
-      ) {
+      else if (typeof query !== "object" || Object.keys(query).length === 0) {
         return null;
       }
 
@@ -224,4 +254,49 @@ export class Parser {
 function getName(name: string) {
   if (name.endsWith("!")) return name.slice(0, -1);
   return name;
+}
+
+function mergeArray(data: any) {
+  if (!Array.isArray(data)) return data;
+  if (data.length === 0) return {};
+
+  const merged = data.reduce(merge, {});
+
+  return merged;
+}
+
+function merge(prev: any, curr: any) {
+  if (typeof curr !== "object") return curr;
+
+  const output = Object.assign({}, prev);
+
+  for (const key in curr) {
+    const val = curr[key];
+
+    // if (output[key] === undefined) {
+    //   output[key] === val;
+    //   continue;
+    // }
+
+    if (typeof val === "undefined") continue;
+    else if (typeof val === "boolean") output[key] = val;
+    else if (typeof val === "object") {
+      if (Array.isArray(val)) {
+        // const toMerge: any[] =
+        //   val[0] instanceof Args ? val.slice(1) : val.slice(0);
+        // const result = mergeArray(toMerge);
+        output[key] = val;
+      } else if (val instanceof Fragment) {
+        const result = merge(output[key], val.getFragment());
+        output[key] = result;
+      } else {
+        if (typeof output[key] === "object" && !Array.isArray(output[key])) {
+          const result = merge(output[key], curr[key]);
+          output[key] = result;
+        } else output[key] = val;
+      }
+    } else continue;
+  }
+
+  return output;
 }
