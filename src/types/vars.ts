@@ -25,6 +25,10 @@ type ExtractVariables<T> = T extends object
     : {}
   : {};
 
-type Id<T> = T extends infer U ? { [K in keyof U]: U[K] } : never;
+type Id<T> = [T] extends [never]
+  ? {}
+  : T extends infer U
+  ? { [K in keyof U]: U[K] }
+  : {};
 
 export type GetVariables<T> = Id<ExtractVariables<T>>;

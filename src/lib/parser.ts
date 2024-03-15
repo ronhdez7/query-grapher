@@ -36,7 +36,7 @@ export class Parser {
     const arglist: string[] = [];
     if (Object.keys(this.variables).length > 0) {
       for (const varName in this.variables) {
-        arglist.push(`${varName}: $${varName}`);
+        arglist.push(`$${varName}: ${this.variables[varName]}`);
         this.variables[varName] = undefined;
       }
       args = `(${arglist.join(", ")})`;
@@ -143,7 +143,7 @@ export class Parser {
             if (argValue instanceof Variable) {
               const varName = argValue.getName() ?? argKey;
               argsSection += `$${varName}`;
-              varsToSave[varName] = argValue;
+              varsToSave[varName] = (root[0] as any)[argKey];
             } else {
               argsSection += String(argValue);
             }
@@ -219,7 +219,7 @@ export class Parser {
 
         const result = mergeArray(toMerge);
         output += this.parseBody(result, root, visited)?.slice(2, -1) ?? "";
-        output += "}"
+        output += "}";
         return output;
       }
 
