@@ -14,4 +14,8 @@ export class Variable<
   }
 }
 
-
+export function v<V = any, T extends string | undefined = string | undefined>(
+  name?: T
+): Variable<V, T> {
+  return new Variable(name);
+}
