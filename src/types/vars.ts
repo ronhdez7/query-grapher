@@ -1,9 +1,12 @@
 import { Args } from "../lib/args";
 import { Fragment } from "../lib/fragment";
+import { InlineFragment } from "../lib/inline-fragment";
 import { Variable } from "../lib/var";
 
 type ExtractVariables<T> = T extends object
   ? T extends Fragment<any, infer F>
+    ? ExtractVariables<F>
+    : T extends InlineFragment<any, infer F>
     ? ExtractVariables<F>
     : T extends Array<any>
     ? T extends [Args<any>, ...infer R]

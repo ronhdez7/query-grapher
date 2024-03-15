@@ -1,5 +1,6 @@
 import { Args } from "../lib/args";
 import { Fragment } from "../lib/fragment";
+import { InlineFragment } from "../lib/inline-fragment";
 
 type OptionalPropertyNames<T> = {
   [K in keyof T]-?: {} extends { [P in K]: T[K] } ? K : never;
@@ -12,6 +13,8 @@ type SpreadProperties<L, R, K extends keyof L & keyof R> = {
 type SpreadId<T> = [T] extends [object]
   ? [T] extends [Fragment<any, infer F>]
     ? SpreadId<F>
+    : [T] extends [InlineFragment<any, infer F>]
+    ? SpreadId<F>
     : T extends infer U
     ? {
         [K in keyof U]: U[K] extends Array<any> ? Spread<U[K]> : SpreadId<U[K]>;
@@ -22,6 +25,8 @@ type SpreadId<T> = [T] extends [object]
 type SpreadTwo<L, R> = [L] extends [Fragment<any, infer LF>]
   ? SpreadTwo<LF, R>
   : [R] extends [Fragment<any, infer RF>]
+  ? SpreadTwo<L, RF>
+  : [R] extends [InlineFragment<any, infer RF>]
   ? SpreadTwo<L, RF>
   : SpreadId<
       Pick<L, Exclude<keyof L, keyof R>> &

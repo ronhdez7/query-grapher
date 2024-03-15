@@ -1,4 +1,5 @@
 import { Fragment } from "../lib/fragment";
+import { InlineFragment } from "../lib/inline-fragment";
 import { FieldWithArguments, PickNotNullable } from "./builder";
 import { Spread } from "./merge";
 
@@ -9,6 +10,8 @@ type isFalsy<T> = T extends true
   ? true
   : T extends object
   ? T extends Fragment<any, infer F>
+    ? isFalsy<F>
+    : T extends InlineFragment<any, infer F>
     ? isFalsy<F>
     : T extends readonly any[]
     ? isFalsy<Spread<T>>
@@ -36,6 +39,8 @@ export type GetResponse<S, T> = isFalsy<T> extends true
   ? null
   : T extends object
   ? T extends Fragment<any, infer F>
+    ? GetResponse<S, F>
+    : T extends InlineFragment<any, infer F>
     ? GetResponse<S, F>
     : S extends readonly (infer E)[]
     ? S extends FieldWithArguments

@@ -2,11 +2,13 @@ import { Arguments, DataValue, JSONQuery, SchemaType } from "../types";
 import { Args } from "./args";
 import { BuiltQuery } from "./builder";
 import { Fragment } from "./fragment";
+import { InlineFragment } from "./inline-fragment";
 import { Variable } from "./var";
 
 export class Parser {
   private readonly variables: Record<string, any> = {};
   private readonly fragments: string[] = [];
+  private strict = false;
 
   constructor(private readonly schema: SchemaType) {}
 
@@ -165,9 +167,9 @@ export class Parser {
         let i = 0;
         let body = null;
         while (i < root.length && body === null) {
-          const member = root[i];
+          this.strict = true;
+          const member = root[i++];
           if (member) body = this.parseBody(query, member, visited);
-          i++;
         }
         return body;
       }
@@ -189,6 +191,16 @@ export class Parser {
         return `...${fragmentName}`;
       }
 
+      // check if query is a fragment
+      else if (query instanceof InlineFragment) {
+        const body = this.parseBody(query.getFragment(), root, visited);
+        if (body === null) return null;
+
+        const type = query.getType() ?? visited.at(-1);
+        // return this.parseBody(query.getFragment(), root, visited);
+        return `... on ${type} ${body}`;
+      }
+
       // check if all subfields should be parsed
       else if (query === true) {
         let output = "{\n";
@@ -198,7 +210,12 @@ export class Parser {
           if (!value) continue;
 
           const body = this.parseBody(true, value, visited);
-          if (body === null) continue;
+          if (body === null) {
+            if (this.strict) {
+              this.strict = false;
+              return null;
+            } else continue;
+          }
           if (body.trim().startsWith("...")) output += `{\n${body}\n}\n`;
           else output += key + " " + body + "\n";
         }
@@ -212,11 +229,26 @@ export class Parser {
       else if (query instanceof Array) {
         let output = "{\n";
 
-        const fragments = query.filter((e) => e instanceof Fragment);
-        const toMerge = query.filter((e) => !(e instanceof Fragment));
+        const fragments: Fragment<any, any>[] = [];
+        const inlineFragments: InlineFragment<any, any>[] = [];
+        const toMerge: any[] = [];
+
+        query.forEach((e) => {
+          if (e instanceof Fragment) fragments.push(e);
+          else if (e instanceof InlineFragment) inlineFragments.push(e);
+          else toMerge.push(e);
+        });
 
         for (const fragment of fragments) {
-          output += this.parseBody(fragment, root, visited) + "\n";
+          const body = this.parseBody(fragment, root, visited) + "\n";
+          if (body === null) return null;
+          output += body;
+        }
+
+        for (const fragment of inlineFragments) {
+          const body = this.parseBody(fragment, root, visited) + "\n";
+          if (body === null) return null;
+          output += body;
         }
 
         const result = mergeArray(toMerge);
@@ -235,10 +267,21 @@ export class Parser {
         let output = "{\n";
         for (const key in query) {
           const newRoot = root[key];
-          if (!query[key] || !newRoot) continue;
+          if (!query[key]) continue;
+          if (!newRoot) {
+            if (this.strict) {
+              this.strict = false;
+              return null;
+            } else continue;
+          }
 
           const body = this.parseBody(query[key], newRoot, visited);
-          if (body === null) continue;
+          if (body === null) {
+            if (this.strict) {
+              this.strict = false;
+              return null;
+            } else continue;
+          }
           if (body.trim().startsWith("...")) output += `${key} {\n${body}\n}\n`;
           else output += key + " " + body + "\n";
         }

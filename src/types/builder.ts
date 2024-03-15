@@ -1,5 +1,6 @@
 import { Args } from "../lib/args";
 import { Fragment } from "../lib/fragment";
+import { InlineFragment } from "../lib/inline-fragment";
 import { Variable } from "../lib/var";
 
 /** Checks if type is 'any' */
@@ -61,7 +62,7 @@ type HandleArguments<Args extends Arguments> = {
 export type FieldWithArguments = readonly [Arguments, any];
 
 /** Allows type to be inside of fragment */
-type Fragmentable<T> = T | Fragment<any, T>;
+type Fragmentable<T> = T | Fragment<any, T> | InlineFragment<any, T>;
 
 type Arrayble<T> = T | Array<T extends boolean ? T : Exclude<T, boolean>>;
 type RequiredArray<T> = T extends Array<infer T> ? [T, ...T[]] : [T, ...T[]];
