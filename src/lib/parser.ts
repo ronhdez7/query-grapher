@@ -181,7 +181,9 @@ export class Parser {
         const fragmentName = query.getName();
         const body = this.parseBody(query.getFragment(), root, visited);
         if (body === null) return null;
-        const frag = `fragment ${fragmentName} on ${query.getType()} ${body}`;
+        const frag = `fragment ${fragmentName} on ${
+          query.getType() ?? visited.at(-1)
+        } ${body}`;
         this.fragments.push(frag);
         // return this.parseBody(query.getFragment(), root, visited);
         return `...${fragmentName}`;

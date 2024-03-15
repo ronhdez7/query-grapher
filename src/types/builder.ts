@@ -1,10 +1,6 @@
-import { Schema } from "../example/generated/output";
-import { Args, args } from "../lib/args";
+import { Args } from "../lib/args";
 import { Fragment } from "../lib/fragment";
 import { Variable } from "../lib/var";
-import { Spread } from "./merge";
-import { GetResponse } from "./response";
-import { GetVariables } from "./vars";
 
 /** Checks if type is 'any' */
 type isAny<T> = unknown extends T ? true : false;
@@ -96,59 +92,3 @@ export type GQLBuilder<S2, S = NonNullable<S2>> = isAny<S> extends true
         >
       >
   : Arrayble<boolean>;
-
-// const query = {
-//   Activity: [
-//     { message: true, messenger: { createdAt: true } },
-//     { id: true, message: false, messenger: [{createdAt: true}, {createdAt: false}] },
-//   ],
-// } satisfies GQLBuilder<Schema["Query"]>;
-
-function q<const Q extends GQLBuilder<Schema["Query"]>>(query: Q) {
-  return query;
-}
-
-const query = q({
-  Activity: [
-    args({
-      createdAt: new Variable(),
-    }),
-    { message: true, messenger: [{ createdAt: true }] },
-    {
-      id: true,
-      message: false,
-
-      messenger: {
-        about: false,
-        favourites: [
-          args({ page: new Variable("page2") }),
-          { anime: true },
-          { anime: false },
-          new Fragment("", "", { anime: true }),
-        ],
-      },
-    },
-  ],
-});
-
-type a = Spread<(typeof query)["Activity"]> & {};
-// type B = typeof query['Activity'] extends [infer A, ...infer C] ? C : never
-
-type v = GetVariables<typeof query>;
-
-const vars: v = {
-  createdAt: 1,
-  page2: null,
-};
-
-type Impossible<K extends keyof any> = {
-  [P in K]: never;
-};
-
-// The secret sauce! Provide it the type that contains only the properties you want,
-// and then a type that extends that type, based on what the caller provided
-// using generics.
-export type NoExtraProperties<T, U extends T = T> = U &
-  Impossible<Exclude<keyof U, keyof T>>;
-
-type Z = boolean extends object | boolean ? true : false;

@@ -1,6 +1,4 @@
-import { Schema } from "../example/generated/output";
 import { GQLBuilder, NonEmptyString } from "../types";
-import { args } from "./args";
 
 /**
  * Creates a fragment
@@ -55,6 +53,9 @@ export function fragment<S>(): <
   return (name, type, query) => new Fragment(name, type, query);
 }
 
-const frag = fragment<Schema>()("ActivityFragment", "ActivityUnion", {
-  message: [true],
-});
+export function fieldFragment<N extends string, Q>(
+  name: N & NonEmptyString<N>,
+  query: Q
+): Fragment<any, Q> {
+  return new Fragment(name, undefined, query);
+}
