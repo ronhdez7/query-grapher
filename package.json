@@ -16,6 +16,6 @@
   "devDependencies": {
     "@types/node": "^20.11.22",
     "gql-types-gen": "^0.4.6",
-    "typescript": "^5.3.3"
+    "typescript": "^5.4.2"
   }
 }
