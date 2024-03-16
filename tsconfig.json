@@ -1,14 +1,18 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "ES2022",
+    "moduleResolution": "Node10",
     "module": "CommonJS",
-    "skipLibCheck": true,
     "outDir": "dist",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "skipLibCheck": true,
 
     "strict": true,
-    "noUncheckedIndexedAccess": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],

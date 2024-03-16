@@ -6,6 +6,7 @@
   "scripts": {
     "watch": "tsc -w",
     "dev": "node dist/example/index.js",
+    "build": "tsup",
     "gen": "gql-gen -s https://graphql.anilist.co -o src/example/generated/output.ts",
     "gen2": "gql-gen -s https://countries.trevorblades.com -o src/example/generated/output.ts",
     "gen3": "gql-gen -s https://graphql-pokeapi.graphcdn.app/ -o src/example/generated/output.ts"
@@ -16,6 +17,7 @@
   "devDependencies": {
     "@types/node": "^20.11.22",
     "gql-types-gen": "^0.4.6",
+    "tsup": "^8.0.2",
     "typescript": "^5.4.2"
   }
 }
