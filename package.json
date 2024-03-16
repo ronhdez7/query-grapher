@@ -1,8 +1,13 @@
 {
   "name": "query-grapher",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "url": "https://github.com/ronhdez7/query-grapher"
+  },
   "scripts": {
     "watch": "tsc -w",
     "dev": "node dist/example/index.js",
@@ -11,9 +16,16 @@
     "gen2": "gql-gen -s https://countries.trevorblades.com -o src/example/generated/output.ts",
     "gen3": "gql-gen -s https://graphql-pokeapi.graphcdn.app/ -o src/example/generated/output.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "gql",
+    "graphql",
+    "query",
+    "builder",
+    "types",
+    "ts"
+  ],
+  "author": "ronhdez7",
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.11.22",
     "gql-types-gen": "^0.4.6",
